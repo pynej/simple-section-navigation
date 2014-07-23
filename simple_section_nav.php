@@ -3,7 +3,7 @@
  Plugin Name: Simple Section Navigation Widget
  Plugin URI: http://www.get10up.com/plugins/simple-section-navigation/
  Description: Adds a <strong>widget</strong> for <strong>section (or top level page) based navigation</strong>... essential for <strong>CMS</strong> implementations! The <strong>title of the widget is the top level page</strong> within the current page hierarchy. Shows all page siblings (except on the top level page), all parents and grandparents (and higher), the siblings of all parents and grandparents (up to top level page), and any immediate children of the current page. Can also be called by a function inside template files. May <strong>exclude any pages or sections</strong>. Uses standard WordPress navigation classes for easy styling. 
- Version: 2.1
+ Version: 2.2
  Author: Jake Goldman (10up)
  Author URI: http://www.get10up.com
 
@@ -34,14 +34,15 @@ class SimpleSectionNav extends WP_Widget
     function widget($args, $instance) {
 		extract($args);
 		global $post;
+		$myPost = $post;
 		
 		if ( is_search() || is_404() ) return false; //doesn't apply to search or 404 page
 		if ( is_front_page() && !$instance['show_on_home'] ) return false;	//if we're on the front page and we haven't chosen to show this anyways, leave
 		
 		if ( is_page() ) {
-			if ( isset($post) && is_object($post) ) _get_post_ancestors($post);   //workaround for occassional problems
+			if ( isset($myPost) && is_object($myPost) ) _get_post_ancestors($myPost);   //workaround for occassional problems
 		} else {
-			if ($post_page = get_option("page_for_posts")) $post = get_page($post_page); //treat the posts page as the current page if applicable
+			if ($post_page = get_option("page_for_posts")) $myPost = get_page($post_page); //treat the posts page as the current page if applicable
 			elseif ($instance['show_on_home']) $sub_front_page = true;	//if want to show on home, and home is the posts page
 			else return false;
 		}
@@ -56,16 +57,16 @@ class SimpleSectionNav extends WP_Widget
 		
 		$exclude_list = $instance['exclude'];
 		$excluded = explode(',', $exclude_list); //convert list of excluded pages to array 
-		if ( in_array($post->ID,$excluded) && $instance['hide_on_excluded'] ) return false; //if on excluded page, and setup to hide on excluded pages 
+		if ( in_array($myPost->ID,$excluded) && $instance['hide_on_excluded'] ) return false; //if on excluded page, and setup to hide on excluded pages 
 		
-		$post_ancestors = ( isset($post->ancestors) ) ? $post->ancestors : get_post_ancestors($post); //get the current page's ancestors either from existing value or by executing function
-		$top_page = $post_ancestors ? end($post_ancestors) : $post->ID; //get the top page id
+		$post_ancestors = ( isset($myPost->ancestors) ) ? $myPost->ancestors : get_post_ancestors($myPost); //get the current page's ancestors either from existing value or by executing function
+		$top_page = $post_ancestors ? end($post_ancestors) : $myPost->ID; //get the top page id
 		
 		$thedepth = 0; //initialize default variables
 		
 		if( !$instance['show_all'] ) 
 		{	
-			$ancestors_me = implode( ',', $post_ancestors ) . ',' . $post->ID;
+			$ancestors_me = implode( ',', $post_ancestors ) . ',' . $myPost->ID;
 			
 			//exclude pages not in direct hierarchy
 			foreach ($post_ancestors as $anc_id) 
@@ -88,8 +89,8 @@ class SimpleSectionNav extends WP_Widget
 		$sect_title = ( $instance['title'] ) ? apply_filters( 'the_title', $instance['title'] ) : apply_filters( 'the_title', get_the_title($top_page), $top_page );
 		$sect_title = apply_filters( 'simple_section_nav_title', $sect_title );
 		if ($instance['a_heading']) {
-			$headclass = ( $post->ID == $top_page ) ? "current_page_item" : "current_page_ancestor";
-			if ( $post->post_parent == $top_page ) $headclass .= " current_page_parent";
+			$headclass = ( $myPost->ID == $top_page ) ? "current_page_item" : "current_page_ancestor";
+			if ( $myPost->post_parent == $top_page ) $headclass .= " current_page_parent";
 			$sect_title = '<a href="' . get_page_link($top_page) . '" id="toppage-' . $top_page . '" class="' . $headclass . '">' . $sect_title . '</a>';	
 		}
 	  	
